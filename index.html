@@ -23,7 +23,7 @@
         </div>
       </div>
       <div class="sidebar-section">
-        <div class="section-title">
+        <div class="section-title" data-tip="Esta lista controla qué columnas se muestran en la tabla. Marca una para añadirla y desmárcala para ocultarla. Las columnas fijas (AÑO, NOMBRE CARRERA, TOTAL MATRÍCULA PRIMER AÑO, TOTAL MATRÍCULA) siempre están visibles. Cada columna visible tiene su filtro en la cabecera de la tabla: numérico (mínimo/máximo) o selección de valores con buscador. Al abrir la página todos los filtros están desactivados; la selección de columnas se recuerda entre visitas.">
           <span>Columnas de la tabla</span>
         </div>
         <div class="col-search">
@@ -34,12 +34,13 @@
           <input type="text" id="colSearch" placeholder="Buscar columna…" aria-label="Buscar columna">
         </div>
         <div id="colList" class="col-list" role="group" aria-label="Columnas opcionales"></div>
+        <button id="btnClearCols" class="btn-ghost sidebar-clear" type="button" data-tip="Desmarca todas las columnas opcionales, dejando visibles solo las columnas fijas (AÑO, NOMBRE CARRERA, TOTAL MATRÍCULA PRIMER AÑO, TOTAL MATRÍCULA).">Limpiar</button>
       </div>
     </aside>
 
     <main class="main">
       <section class="cat-bar">
-        <div class="cat-label">Clasificación</div>
+        <div class="cat-label" data-tip="Las categorías son una clasificación propia de las carreras de música, no provienen del SIES. Activa o desactiva categorías para filtrar qué registros se muestran: la tabla, el resumen y el gráfico solo consideran las categorías activas. El filtro es inclusivo (OR): un registro aparece si pertenece a cualquiera de las categorías activas. 'Todas' activa las 11; 'Ninguna' las desactiva (0 registros).">Clasificación</div>
         <div id="catChips" class="cat-chips" role="group" aria-label="Categorías de clasificación"></div>
         <div class="cat-actions">
           <button id="catAll" class="btn-ghost" type="button">Todas</button>
@@ -53,7 +54,7 @@
           <p id="resultCount" class="muted">Cargando datos…</p>
         </div>
         <div class="ctx-actions">
-          <button id="clearAll" class="btn-danger" type="button">
+          <button id="clearAll" class="btn-accent" type="button">
             <svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Limpiar todo
           </button>
@@ -61,11 +62,11 @@
       </section>
 
       <section id="resumen" class="cards" aria-label="Resumen">
-        <div class="card" id="card-registros"><span class="card-label">Registros</span><span class="card-value">—</span></div>
-        <div class="card" id="card-carreras"><span class="card-label">Carreras únicas</span><span class="card-value">—</span></div>
-        <div class="card" id="card-instituciones"><span class="card-label">Instituciones</span><span class="card-value">—</span></div>
-        <div class="card" id="card-matricula"><span class="card-label">Matrícula total</span><span class="card-value">—</span></div>
-        <div class="card" id="card-anos"><span class="card-label">Años</span><span class="card-value">—</span></div>
+        <div class="card" id="card-registros" data-tip="Número de registros (filas de la base) que cumplen los filtros actuales. Cada registro es una carrera impartida por una institución en una sede, en un año concreto."><span class="card-label">Registros</span><span class="card-value">—</span></div>
+        <div class="card" id="card-carreras" data-tip="Número de códigos de carrera distintos presentes en los registros filtrados. Cada código identifica una carrera; dos carreras con el mismo nombre pueden ser carreras distintas."><span class="card-label">Carreras únicas</span><span class="card-value">—</span></div>
+        <div class="card" id="card-instituciones" data-tip="Número de instituciones de educación superior distintas presentes en los registros filtrados."><span class="card-label">Instituciones</span><span class="card-value">—</span></div>
+        <div class="card" id="card-matricula" data-tip="Suma de la columna TOTAL MATRÍCULA sobre los registros filtrados."><span class="card-label">Matrícula total</span><span class="card-value">—</span></div>
+        <div class="card" id="card-anos" data-tip="Rango de años (mínimo a máximo) que abarcan los registros filtrados."><span class="card-label">Años</span><span class="card-value">—</span></div>
       </section>
 
       <section class="table-card">

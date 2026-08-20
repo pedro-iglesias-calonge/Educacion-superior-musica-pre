@@ -31,6 +31,14 @@ export function anoNum(v) {
   return m ? Number(m[0]) : null;
 }
 
+export function isYearCol(h) {
+  return norm(h) === "ANO";
+}
+
+export function colKey(h, v) {
+  return isYearCol(h) ? anoNum(v) : v;
+}
+
 export function parseCSV(text) {
   const lines = String(text).split(/\r?\n/).filter((l) => l.trim() !== "");
   if (lines.length === 0) return { headers: [], rows: [] };
@@ -83,23 +91,35 @@ export function filterData(rows, opts) {
       }
     }
     for (const [h, f] of Object.entries(colFilters)) {
-      const v = r[h] == null ? "" : r[h];
-      if (f.kind === "num") {
-        const n = numVal(v);
-        if (f.min != null && n < f.min) return false;
-        if (f.max != null && n > f.max) return false;
-      } else if (f.kind === "select") {
-        if (norm(h) === "ANO") {
-          if (anoNum(v) !== f.value) return false;
-        } else if (norm(v) !== norm(f.value)) {
-          return false;
-        }
-      } else if (f.kind === "text") {
-        if (norm(v).indexOf(norm(f.text)) === -1) return false;
-      }
+      if (!colFilterMatches(f, h, r[h] == null ? "" : r[h])) return false;
     }
     return true;
   });
+}
+
+export function colFilterMatches(f, h, v) {
+  if (f.kind === "num") {
+    const n = numVal(v);
+    if (f.min != null && n < f.min) return false;
+    if (f.max != null && n > f.max) return false;
+    return true;
+  }
+  if (f.kind === "select") {
+    if (isYearCol(h)) return anoNum(v) === f.value;
+    return norm(v) === norm(f.value);
+  }
+  if (f.kind === "multi") {
+    if (f.values.length === 0) return true;
+    if (isYearCol(h)) {
+      const y = anoNum(v);
+      return y != null && f.values.includes(y);
+    }
+    return f.values.some((sel) => norm(sel) === norm(v));
+  }
+  if (f.kind === "text") {
+    return norm(v).indexOf(norm(f.text)) !== -1;
+  }
+  return true;
 }
 
 export function aggregateByYear(rows, opts) {

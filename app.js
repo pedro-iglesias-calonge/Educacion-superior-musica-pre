@@ -2,6 +2,8 @@ import {
   norm,
   numVal,
   anoNum,
+  colKey,
+  isYearCol,
   parseCSV,
   detectTypes,
   filterData,
@@ -157,10 +159,6 @@ function restoreColumns() {
     for (const c of saved) {
       if (!FIXED_COLS.includes(c) && headers.includes(c)) set.add(c);
     }
-  } else {
-    for (const h of ["NOMBRE INSTITUCIÓN", "REGIÓN"]) {
-      if (headers.includes(h)) set.add(h);
-    }
   }
   return set;
 }
@@ -213,6 +211,15 @@ $("#colSearch").addEventListener("input", (e) => {
   for (const item of $("#colList").children) {
     item.style.display = norm(item.dataset.col).includes(q) ? "" : "none";
   }
+});
+
+$("#btnClearCols").addEventListener("click", () => {
+  for (const h of headers) {
+    if (!FIXED_COLS.includes(h)) visibleCols.delete(h);
+  }
+  saveColumns();
+  buildColList();
+  renderAll();
 });
 
 /* ---------- Category chips ---------- */
@@ -279,65 +286,237 @@ function buildFilterRow(th, h) {
   if (t === "num") {
     const wrap = document.createElement("div");
     wrap.className = "range";
+    const apply = () => {
+      const minVal = min.value === "" ? null : Number(min.value);
+      const maxVal = max.value === "" ? null : Number(max.value);
+      const invalid = minVal != null && maxVal != null && minVal > maxVal;
+      min.classList.toggle("invalid", invalid);
+      max.classList.toggle("invalid", invalid);
+      if (invalid) return;
+      if (!colFilters[h]) colFilters[h] = { kind: "num" };
+      colFilters[h].min = minVal;
+      colFilters[h].max = maxVal;
+      if (colFilters[h].min == null && colFilters[h].max == null) delete colFilters[h];
+      renderAll();
+    };
     const min = document.createElement("input");
     min.type = "number";
     min.placeholder = "min";
     min.value = colFilters[h] && colFilters[h].min != null ? colFilters[h].min : "";
-    min.addEventListener("input", () => {
-      if (!colFilters[h]) colFilters[h] = { kind: "num" };
-      colFilters[h].min = min.value === "" ? null : Number(min.value);
-      if (colFilters[h].min == null && colFilters[h].max == null) delete colFilters[h];
-      renderAll();
+    min.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") apply();
     });
+    min.addEventListener("change", apply);
     const max = document.createElement("input");
     max.type = "number";
     max.placeholder = "max";
     max.value = colFilters[h] && colFilters[h].max != null ? colFilters[h].max : "";
-    max.addEventListener("input", () => {
-      if (!colFilters[h]) colFilters[h] = { kind: "num" };
-      colFilters[h].max = max.value === "" ? null : Number(max.value);
-      if (colFilters[h].min == null && colFilters[h].max == null) delete colFilters[h];
-      renderAll();
+    max.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") apply();
     });
+    max.addEventListener("change", apply);
     wrap.appendChild(min);
     wrap.appendChild(max);
     th.appendChild(wrap);
-  } else if (t === "select") {
-    const sel = document.createElement("select");
-    const optAll = document.createElement("option");
-    optAll.value = "";
-    optAll.textContent = "Todos";
-    sel.appendChild(optAll);
-    const opts = getAvail(h);
-    for (const v of opts) {
-      const o = document.createElement("option");
-      const isAno = h === "AÑO";
-      o.value = isAno ? String(anoNum(v)) : v;
-      o.textContent = isAno ? String(anoNum(v)) : v;
-      sel.appendChild(o);
-    }
-    if (colFilters[h]) sel.value = String(colFilters[h].value);
-    sel.addEventListener("change", () => {
-      if (sel.value === "") delete colFilters[h];
-      else colFilters[h] = {
-        kind: "select",
-        value: h === "AÑO" ? anoNum(sel.value) : sel.value,
-      };
-      renderAll();
-    });
-    th.appendChild(sel);
   } else {
-    const inp = document.createElement("input");
-    inp.type = "text";
-    inp.placeholder = "Filtrar…";
-    inp.value = colFilters[h] ? colFilters[h].text || "" : "";
-    inp.addEventListener("input", () => {
-      if (inp.value === "") delete colFilters[h];
-      else colFilters[h] = { kind: "text", text: inp.value };
-      renderAll();
-    });
-    th.appendChild(inp);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "filter-btn" + (colFilters[h] ? " active" : "");
+    btn.dataset.filterCol = h;
+    btn.textContent = colFilters[h] ? summarizeMulti(h) : "Filtrar";
+    btn.addEventListener("click", () => toggleFilterPop(h));
+    th.appendChild(btn);
   }
+}
+
+function summarizeMulti(h) {
+  const f = colFilters[h];
+  if (f.values.length === 1) return displayValue(h, f.values[0]);
+  return `${f.values.length} valores`;
+}
+
+function displayValue(h, v) {
+  return isYearCol(h) ? String(anoNum(v)) : v;
+}
+
+function filterBtnEl(h) {
+  return document.querySelector(`.filter-btn[data-filter-col="${CSS.escape(h)}"]`);
+}
+
+/* ---------- Popover de selección múltiple ---------- */
+let activeFilterCol = null;
+let filterPop = null;
+
+function ensureFilterPop() {
+  if (filterPop) return filterPop;
+  filterPop = document.createElement("div");
+  filterPop.id = "filterPop";
+  filterPop.className = "filter-popover";
+  filterPop.hidden = true;
+
+  const searchWrap = document.createElement("div");
+  searchWrap.className = "fp-search";
+  const search = document.createElement("input");
+  search.type = "text";
+  search.placeholder = "Buscar…";
+  search.className = "fp-search-input";
+  search.addEventListener("input", renderFilterList);
+  searchWrap.appendChild(search);
+
+  const list = document.createElement("div");
+  list.className = "fp-list";
+  list.addEventListener("change", (e) => {
+    if (!e.target.closest("input[type=checkbox]")) return;
+    applyMultiSelection();
+  });
+
+  const actions = document.createElement("div");
+  actions.className = "fp-actions";
+  const clear = document.createElement("button");
+  clear.type = "button";
+  clear.className = "fp-clear";
+  clear.textContent = "Ninguna";
+  clear.addEventListener("click", () => {
+    if (!activeFilterCol) return;
+    delete colFilters[activeFilterCol];
+    renderAll();
+  });
+  const count = document.createElement("span");
+  count.className = "fp-count";
+  actions.appendChild(clear);
+  actions.appendChild(count);
+
+  filterPop.appendChild(searchWrap);
+  filterPop.appendChild(list);
+  filterPop.appendChild(actions);
+  document.body.appendChild(filterPop);
+
+  document.addEventListener("click", (e) => {
+    if (!filterPop || filterPop.hidden) return;
+    if (e.target.closest(".filter-popover") || e.target.closest(".filter-btn")) return;
+    closeFilterPop();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeFilterPop();
+  });
+  window.addEventListener(
+    "scroll",
+    (e) => {
+      if (e.target && e.target.closest && e.target.closest(".filter-popover")) return;
+      closeFilterPop();
+    },
+    true,
+  );
+  window.addEventListener("resize", closeFilterPop);
+
+  return filterPop;
+}
+
+function renderFilterList() {
+  if (!activeFilterCol || !filterPop) return;
+  const h = activeFilterCol;
+  const list = filterPop.querySelector(".fp-list");
+  const q = norm(filterPop.querySelector(".fp-search-input").value);
+  const avail = getAvail(h);
+  const selected = new Set(colFilters[h] ? colFilters[h].values : []);
+  const shown = avail.filter((v) => {
+    if (q === "") return true;
+    return norm(v).includes(q) || norm(displayValue(h, v)).includes(q);
+  });
+  list.innerHTML = "";
+  if (shown.length === 0) {
+    list.textContent = "Sin valores disponibles";
+    setFilterCount(selected.size);
+    return;
+  }
+  for (const v of shown) {
+    const key = colKey(h, v);
+    const row = document.createElement("label");
+    row.className = "fp-item";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.dataset.key = String(key);
+    cb.checked = selected.has(key);
+    const span = document.createElement("span");
+    span.textContent = displayValue(h, v);
+    row.appendChild(cb);
+    row.appendChild(span);
+    list.appendChild(row);
+  }
+  setFilterCount(selected.size);
+}
+
+function setFilterCount(n) {
+  const count = filterPop.querySelector(".fp-count");
+  count.textContent = n === 0 ? "Sin filtro" : `${n} seleccionado${n === 1 ? "" : "s"}`;
+}
+
+function refreshFilterPop() {
+  if (!activeFilterCol || !filterPop) return;
+  const h = activeFilterCol;
+  const selected = new Set(colFilters[h] ? colFilters[h].values : []);
+  const cbs = filterPop.querySelectorAll(".fp-item input[type=checkbox]");
+  for (const cb of cbs) {
+    cb.checked = selected.has(colKey(h, cb.dataset.key));
+  }
+  setFilterCount(selected.size);
+}
+
+function applyMultiSelection() {
+  if (!activeFilterCol || !filterPop) return;
+  const h = activeFilterCol;
+  const values = [...filterPop.querySelectorAll(".fp-item input:checked")].map((cb) =>
+    colKey(activeFilterCol, cb.dataset.key),
+  );
+  if (values.length === 0) delete colFilters[h];
+  else colFilters[h] = { kind: "multi", values };
+  renderAll();
+}
+
+function openFilterPop(h) {
+  ensureFilterPop();
+  activeFilterCol = h;
+  filterPop.querySelector(".fp-search-input").value = "";
+  renderFilterList();
+  filterPop.hidden = false;
+  positionFilterPop(filterBtnEl(h));
+  filterPop.querySelector(".fp-search-input").focus();
+}
+
+function positionFilterPop(btn) {
+  if (!btn || !filterPop) return;
+  const r = btn.getBoundingClientRect();
+  const pr = filterPop.getBoundingClientRect();
+  let x = r.left;
+  let y = r.bottom + 4;
+  if (x + pr.width > window.innerWidth) x = window.innerWidth - pr.width - 8;
+  if (y + pr.height > window.innerHeight) y = r.top - pr.height - 4;
+  filterPop.style.left = x + "px";
+  filterPop.style.top = y + "px";
+}
+
+function toggleFilterPop(h) {
+  if (activeFilterCol === h) {
+    closeFilterPop();
+    return;
+  }
+  openFilterPop(h);
+}
+
+function closeFilterPop() {
+  activeFilterCol = null;
+  if (filterPop) filterPop.hidden = true;
+}
+
+function refreshOpenPop() {
+  if (!activeFilterCol || !filterPop || filterPop.hidden) return;
+  const btn = filterBtnEl(activeFilterCol);
+  if (!btn) {
+    closeFilterPop();
+    return;
+  }
+  refreshFilterPop();
+  positionFilterPop(btn);
 }
 
 function getAvail(h) {
@@ -368,10 +547,13 @@ function renderTable() {
   headerRow.appendChild(idxTh);
   for (const h of visible) {
     const th = document.createElement("th");
+    const isWrap = h === "NOMBRE CARRERA" || h === "NOMBRE INSTITUCIÓN";
+    const isNum = (types[h] || "text") === "num";
     th.textContent = h;
     if (sortKey === h) th.className = sortDir === "asc" ? "sort-asc" : "sort-desc";
     th.addEventListener("click", () => sortBy(h));
-    if (h === "NOMBRE CARRERA") th.classList.add("col-wrap");
+    if (isWrap) th.classList.add("col-wrap");
+    if (isNum) th.classList.add("num-col");
     if (columnTitles[h]) {
       th.dataset.tip = columnTitles[h];
     }
@@ -403,7 +585,7 @@ function renderTable() {
       const td = document.createElement("td");
       const v = r[h] == null ? "" : r[h];
       td.textContent = formatCell(h, v);
-      if (h === "NOMBRE CARRERA") td.classList.add("col-wrap");
+      if (h === "NOMBRE CARRERA" || h === "NOMBRE INSTITUCIÓN") td.classList.add("col-wrap");
       if ((types[h] || "text") === "num") td.className += " cell-num";
       else td.className += " cell-txt";
       tr.appendChild(td);
@@ -411,6 +593,7 @@ function renderTable() {
     frag.appendChild(tr);
   });
   tbody.appendChild(frag);
+  thead.style.setProperty("--hdr", headerRow.offsetHeight + "px");
 }
 
 function formatCell(h, v) {
@@ -463,7 +646,7 @@ function orderedCols() {
 
 /* ---------- Summary ---------- */
 function renderResumen(filtered) {
-  const cars = new Set(filtered.map((r) => r["NOMBRE CARRERA"]).filter(Boolean));
+  const cars = new Set(filtered.map((r) => r["CÓDIGO CARRERA"]).filter(Boolean));
   const inst = new Set(filtered.map((r) => r["NOMBRE INSTITUCIÓN"]).filter(Boolean));
   const total = filtered.reduce((acc, r) => acc + numVal(r["TOTAL MATRÍCULA"]), 0);
   const years = filtered.map((r) => anoNum(r["AÑO"])).filter((y) => y != null);
@@ -608,7 +791,7 @@ function buildChartSvg(data) {
   );
   parts.push(`<rect width="${W}" height="${H}" fill="#ffffff"/>`);
   parts.push(
-    `<text x="${W / 2}" y="20" text-anchor="middle" font-size="18" font-weight="700" fill="#333333">Matrícula por año</text>`,
+    `<text x="${W / 2}" y="20" text-anchor="middle" font-size="20" font-weight="700" fill="#333333">Matrícula por año</text>`,
   );
 
   for (const t of ticks) {
@@ -716,8 +899,7 @@ function describeFilter(f) {
     if (f.max != null) parts.push(`≤ ${f.max}`);
     return parts.join(" ");
   }
-  if (f.kind === "select") return String(f.value);
-  return `"${f.text}"`;
+  return f.values.join(", ");
 }
 
 function showYearTip(e, entry) {
@@ -756,7 +938,7 @@ function hideTooltip() {
 /* ---------- Column tooltip (custom, follows mouse) ---------- */
 document.addEventListener("mouseover", (e) => {
   const tip = $("#tooltip");
-  if (e.target.closest("#chart") || e.target.closest("#tooltip")) return;
+  if (e.target.closest("#chart") || e.target.closest("#tooltip") || e.target.closest(".filter-popover")) return;
   const el = e.target.closest("[data-tip]");
   if (!el) {
     hideTooltip();
@@ -851,6 +1033,7 @@ function renderAll() {
   renderResumen(filtered);
   renderTable();
   renderChart();
+  refreshOpenPop();
 }
 
 function escapeHtml(s) {
