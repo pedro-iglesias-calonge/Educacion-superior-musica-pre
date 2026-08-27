@@ -12,11 +12,14 @@ import {
   orderColumns,
   niceMax,
   toCsv,
+  buildColumnGroups,
+  searchGroups,
 } from "./data.js";
 
 const CSV_URL = "datos/Musica_2007_2026_clasificado_utf8.csv";
+const GROUPS_URL = "datos/columnas_categorias.json";
 const STORAGE_KEY = "columnas_visibles_musica_v2";
-const FIXED_COLS = ["AÑO", "NOMBRE CARRERA", "TOTAL MATRÍCULA PRIMER AÑO", "TOTAL MATRÍCULA"];
+const FIXED_COLS = ["AÑO", "NOMBRE INSTITUCIÓN", "NOMBRE CARRERA", "TOTAL MATRÍCULA PRIMER AÑO", "TOTAL MATRÍCULA"];
 const FIRST_COLS = ["AÑO", "NOMBRE CARRERA"];
 const INST_COL = "NOMBRE INSTITUCIÓN";
 const CAT_COL = "CLASIFICACIÓN";
@@ -60,15 +63,21 @@ let colFilters = {};
 let sortKey = "AÑO";
 let sortDir = "asc";
 let columnTitles = {};
+let sidebarGroups = [];
 
 async function loadData() {
-  const resp = await fetch(CSV_URL);
+  const [resp, groupsResp] = await Promise.all([fetch(CSV_URL), fetch(GROUPS_URL)]);
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-  const text = await resp.text();
+  if (!groupsResp.ok) throw new Error(`HTTP ${groupsResp.status}`);
+  const [text, groupsText] = await Promise.all([resp.text(), groupsResp.text()]);
   const parsed = parseCSV(text);
   headers = parsed.headers;
   rows = parsed.rows;
   types = detectTypes(headers, rows);
+  sidebarGroups = buildColumnGroups(headers, JSON.parse(groupsText), {
+    fixedCols: FIXED_COLS,
+    excludedCols: [CAT_COL],
+  });
   const catSet = new Set(rows.map((r) => r[CAT_COL]).filter((v) => v !== ""));
   catValues = orderCategories([...catSet], CAT_ORDER);
   selectedCats = new Set(catValues);
@@ -123,12 +132,12 @@ function buildColumnTitles() {
     "PROMEDIO EDAD MUJER": "Edad promedio de las mujeres",
     "PROMEDIO EDAD HOMBRE": "Edad promedio de los hombres",
     "PROMEDIO EDAD NO BINARIO": "Edad promedio de personas no binarias",
-    "TES MUNICIPAL + SERVICIO LOCAL EDUCACION": "Egresados de establecimientos municipales o SLE",
-    "TES PARTICULAR SUBVENCIONADO": "Egresados de establecimientos particular subvencionado",
-    "TES PARTICULAR PAGADO": "Egresados de establecimientos particular pagado",
-    "TES CORP. DE ADMINISTRACION DELEGADA": "Egresados de corporaciones de administración delegada",
-    "TOTAL TES": "Total de egresados de educación media",
-    "% COBERTURA TES": "Porcentaje de cobertura de egresados de educación media",
+    "TES MUNICIPAL + SERVICIO LOCAL EDUCACION": "Tipo de establecimiento secundario",
+    "TES PARTICULAR SUBVENCIONADO": "Tipo de establecimiento secundario",
+    "TES PARTICULAR PAGADO": "Tipo de establecimiento secundario",
+    "TES CORP. DE ADMINISTRACION DELEGADA": "Tipo de establecimiento secundario",
+    "TOTAL TES": "Tipo de establecimiento secundario",
+    "% COBERTURA TES": "Tipo de establecimiento secundario",
     "TIPO ESTABLECIMIENTO HC": "Egresados de establecimientos humanístico-científicos",
     "TIPO ESTABLECIMIENTO TP": "Egresados de establecimientos técnico-profesionales",
     "CLAS_EST ADULTO": "Egresados de educación de adultos",
@@ -157,7 +166,7 @@ function restoreColumns() {
   const set = new Set(FIXED_COLS);
   if (Array.isArray(saved)) {
     for (const c of saved) {
-      if (!FIXED_COLS.includes(c) && headers.includes(c)) set.add(c);
+      if (!FIXED_COLS.includes(c) && c !== CAT_COL && headers.includes(c)) set.add(c);
     }
   }
   return set;
@@ -176,41 +185,81 @@ function saveColumns() {
 function buildColList() {
   const list = $("#colList");
   list.innerHTML = "";
-  const optionals = headers.filter((h) => !FIXED_COLS.includes(h));
-  for (const h of optionals) {
-    const item = document.createElement("div");
-    item.className = "col-item";
-    item.dataset.col = h;
+  const searchValue = $("#colSearch").value;
+  const searching = searchValue.trim() !== "";
+  const groups = searching ? searchGroups(sidebarGroups, searchValue) : sidebarGroups;
+  for (const g of groups) {
+    if (searching && !g.hasMatch) continue;
+    const tipText = g.columns.join("\n");
+    const details = document.createElement("details");
+    details.className = "col-group";
+    if (searching) details.open = g.hasMatch;
 
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.id = "cb-" + norm(h).replace(/\s+/g, "_");
-    cb.checked = visibleCols.has(h);
-    cb.addEventListener("change", () => {
-      if (cb.checked) visibleCols.add(h);
-      else visibleCols.delete(h);
-      saveColumns();
-      renderAll();
+    const summary = document.createElement("summary");
+    summary.className = "col-group-head";
+    const name = document.createElement("span");
+    name.className = "col-group-name";
+    name.textContent = g.name;
+    summary.appendChild(name);
+    const count = document.createElement("span");
+    count.className = "col-group-count";
+    count.textContent = String(g.total ?? g.columns.length);
+    summary.appendChild(count);
+    const caret = document.createElement("span");
+    caret.className = "caret";
+    caret.setAttribute("aria-hidden", "true");
+    caret.textContent = "▸";
+    summary.appendChild(caret);
+    if (!details.open) summary.dataset.tip = tipText;
+    details.appendChild(summary);
+
+    const items = document.createElement("div");
+    items.className = "col-group-items";
+    for (const h of g.columns) items.appendChild(makeColItem(h));
+    details.appendChild(items);
+
+    details.addEventListener("toggle", () => {
+      if (details.open) {
+        delete summary.dataset.tip;
+        hideTooltip();
+      } else {
+        summary.dataset.tip = tipText;
+      }
     });
-
-    const label = document.createElement("label");
-    label.htmlFor = cb.id;
-    label.textContent = h;
-    if (columnTitles[h]) {
-      label.dataset.tip = columnTitles[h];
-    }
-
-    item.appendChild(cb);
-    item.appendChild(label);
-    list.appendChild(item);
+    list.appendChild(details);
   }
 }
 
-$("#colSearch").addEventListener("input", (e) => {
-  const q = norm(e.target.value);
-  for (const item of $("#colList").children) {
-    item.style.display = norm(item.dataset.col).includes(q) ? "" : "none";
+function makeColItem(h) {
+  const item = document.createElement("div");
+  item.className = "col-item";
+  item.dataset.col = h;
+
+  const cb = document.createElement("input");
+  cb.type = "checkbox";
+  cb.id = "cb-" + norm(h).replace(/\s+/g, "_");
+  cb.checked = visibleCols.has(h);
+  cb.addEventListener("change", () => {
+    if (cb.checked) visibleCols.add(h);
+    else visibleCols.delete(h);
+    saveColumns();
+    renderAll();
+  });
+
+  const label = document.createElement("label");
+  label.htmlFor = cb.id;
+  label.textContent = h;
+  if (columnTitles[h]) {
+    label.dataset.tip = columnTitles[h];
   }
+
+  item.appendChild(cb);
+  item.appendChild(label);
+  return item;
+}
+
+$("#colSearch").addEventListener("input", () => {
+  buildColList();
 });
 
 $("#btnClearCols").addEventListener("click", () => {
@@ -933,6 +982,7 @@ function hideTooltip() {
   const tip = $("#tooltip");
   tip.hidden = true;
   tip.classList.remove("tip-column");
+  tip.classList.remove("tip-group");
 }
 
 /* ---------- Column tooltip (custom, follows mouse) ---------- */
@@ -946,7 +996,8 @@ document.addEventListener("mouseover", (e) => {
   }
   tip.textContent = el.dataset.tip;
   tip.hidden = false;
-  tip.classList.add("tip-column");
+  if (el.classList.contains("col-group-head")) tip.classList.add("tip-group");
+  else tip.classList.add("tip-column");
   positionTip(e);
 });
 

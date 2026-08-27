@@ -139,6 +139,43 @@ export function aggregateByYear(rows, opts) {
   return [...byYear.values()].sort((a, b) => a.year - b.year);
 }
 
+export function buildColumnGroups(headers, groups, opts = {}) {
+  const { fixedCols = [], excludedCols = [] } = opts;
+  const fixedNorm = fixedCols.map(norm);
+  const excludedNorm = excludedCols.map(norm);
+  const covered = new Set();
+  const result = [];
+  for (const g of groups) {
+    const columns = [];
+    for (const c of g.columnas || []) {
+      const n = norm(c);
+      const header = headers.find((h) => norm(h) === n);
+      if (!header) continue;
+      if (fixedNorm.includes(n) || excludedNorm.includes(n)) continue;
+      columns.push(header);
+      covered.add(n);
+    }
+    if (columns.length > 0) result.push({ name: g.grupo, columns });
+  }
+  const orphans = headers.filter((h) => {
+    const n = norm(h);
+    return !fixedNorm.includes(n) && !excludedNorm.includes(n) && !covered.has(n);
+  });
+  if (orphans.length > 0) result.push({ name: "Sin clasificar", columns: orphans });
+  return result;
+}
+
+export function searchGroups(groups, query) {
+  const q = norm(query);
+  if (q === "") {
+    return groups.map((g) => ({ ...g, total: g.columns.length, hasMatch: true }));
+  }
+  return groups.map((g) => {
+    const columns = g.columns.filter((c) => norm(c).includes(q));
+    return { ...g, columns, total: g.columns.length, hasMatch: columns.length > 0 };
+  });
+}
+
 export function orderCategories(values, canonicalOrder) {
   const canonNorm = canonicalOrder.map(norm);
   const known = [];
