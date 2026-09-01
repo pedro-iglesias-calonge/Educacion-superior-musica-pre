@@ -1,0 +1,11 @@
+{
+  "name": "sies-musica-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Dashboard de matrícula de carreras de música en Chile (SIES) — prototipo HTML",
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\"",
+    "serve": "python -m http.server 8080"
+  }
+}

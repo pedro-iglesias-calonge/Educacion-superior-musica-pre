@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Matrícula Música · SIES</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+            <path d="M9 18V5l12-2v13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="6" cy="18" r="3" fill="none" stroke="currentColor" stroke-width="2"/>
+            <circle cx="18" cy="16" r="3" fill="none" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          <div>
+            <h1>Matrícula Música</h1>
+            <p>SIES · Educación Superior</p>
+          </div>
+        </div>
+      </div>
+      <div class="sidebar-section">
+        <div class="section-title" data-tip="Esta lista controla qué columnas se muestran en la tabla, agrupadas en categorías. Haz clic en una categoría para desplegarla; al pasar el mouse por encima (sin abrir) verás las columnas que contiene. Marca una columna para añadirla y desmárcala para ocultarla. Las columnas fijas (AÑO, NOMBRE CARRERA, TOTAL MATRÍCULA PRIMER AÑO, TOTAL MATRÍCULA) siempre están visibles. Cada columna visible tiene su filtro en la cabecera de la tabla: numérico (mínimo/máximo) o selección de valores con buscador. Al abrir la página todos los filtros están desactivados; la selección de columnas se recuerda entre visitas.">
+          <span>Columnas de la tabla</span>
+        </div>
+        <div class="col-search">
+          <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+            <circle cx="11" cy="11" r="8" fill="none" stroke="currentColor" stroke-width="2"/>
+            <path d="M21 21l-4.35-4.35" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <input type="text" id="colSearch" placeholder="Buscar columna…" aria-label="Buscar columna">
+        </div>
+        <div id="colList" class="col-list" role="group" aria-label="Columnas opcionales"></div>
+        <button id="btnClearCols" class="btn-ghost sidebar-clear" type="button" data-tip="Desmarca todas las columnas opcionales, dejando visibles solo las columnas fijas (AÑO, NOMBRE CARRERA, NOMBRE INSTITUCIÓN, TOTAL MATRÍCULA PRIMER AÑO, TOTAL MATRÍCULA).">Limpiar categorías SIES</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="cat-bar">
+        <div class="cat-label" data-tip="Las categorías son una clasificación propia de las carreras de música, no provienen del SIES. Activa o desactiva categorías para filtrar qué registros se muestran: la tabla, el resumen y el gráfico solo consideran las categorías activas. El filtro es inclusivo (OR): un registro aparece si pertenece a cualquiera de las categorías activas. 'Todas' activa las 11; 'Ninguna' las desactiva (0 registros).">Clasificación</div>
+        <div id="catChips" class="cat-chips" role="group" aria-label="Categorías de clasificación"></div>
+        <div class="cat-actions">
+          <button id="catAll" class="btn-ghost" type="button">Todas</button>
+          <button id="catNone" class="btn-ghost" type="button">Ninguna</button>
+        </div>
+      </section>
+
+      <section class="context-bar">
+        <div>
+          <h2>Matrícula en carreras de música</h2>
+          <p id="resultCount" class="muted">Cargando datos…</p>
+        </div>
+        <div class="ctx-actions">
+          <button id="clearAll" class="btn-accent" type="button">
+            <svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Limpiar todo
+          </button>
+        </div>
+      </section>
+
+      <section id="resumen" class="cards" aria-label="Resumen">
+        <div class="card" id="card-registros" data-tip="Número de registros (filas de la base) que cumplen los filtros actuales. Cada registro es una carrera impartida por una institución en una sede, en un año concreto."><span class="card-label">Registros</span><span class="card-value">—</span></div>
+        <div class="card" id="card-carreras" data-tip="Número de códigos de carrera distintos presentes en los registros filtrados. Cada código identifica una carrera; dos carreras con el mismo nombre pueden ser carreras distintas."><span class="card-label">Carreras únicas</span><span class="card-value">—</span></div>
+        <div class="card" id="card-instituciones" data-tip="Número de instituciones de educación superior distintas presentes en los registros filtrados."><span class="card-label">Instituciones</span><span class="card-value">—</span></div>
+        <div class="card" id="card-matricula" data-tip="Suma de la columna TOTAL MATRÍCULA sobre los registros filtrados."><span class="card-label">Matrícula total</span><span class="card-value">—</span></div>
+        <div class="card" id="card-anos" data-tip="Rango de años (mínimo a máximo) que abarcan los registros filtrados."><span class="card-label">Años</span><span class="card-value">—</span></div>
+      </section>
+
+      <section class="table-card">
+        <div class="table-wrap">
+          <table id="tabla">
+            <thead id="tableHead"></thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="chart-card">
+        <div class="chart-main">
+          <div class="chart-header">
+            <h3>Matrícula por año</h3>
+          </div>
+          <div class="chart-wrap">
+            <svg id="chart" viewBox="0 0 1000 420" role="img" aria-label="Gráfico de matrícula por año"></svg>
+          </div>
+          <div class="chart-legend" id="legend"></div>
+        </div>
+        <aside class="chart-side" aria-label="Contexto del gráfico">
+          <div class="side-block">
+            <div class="side-title">Descargas</div>
+            <div class="side-actions">
+              <button id="btnDownloadCsv" class="btn-download" type="button" data-tip="Descarga el listado actual de la tabla en formato CSV, con todos los filtros aplicados y todas las columnas del archivo original.">
+                <svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Descargar listado (CSV)
+              </button>
+              <button id="btnDownloadPng" class="btn-download" type="button" data-tip="Descarga el gráfico de matrícula como imagen PNG, con las series y la leyenda.">
+                <svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 17l5-5 4 4 4-6 5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Descargar gráfico (PNG)
+              </button>
+            </div>
+          </div>
+          <div class="side-block">
+            <div class="side-title">Categorías activas</div>
+            <div id="sideCats" class="side-cats"></div>
+          </div>
+          <div class="side-block">
+            <div class="side-title">Filtros de columna</div>
+            <div id="sideFilters" class="side-filters"></div>
+          </div>
+          <div class="side-block">
+            <div class="side-title">Registros filtrados</div>
+            <div id="sideCount" class="side-count"></div>
+          </div>
+        </aside>
+      </section>
+    </main>
+  </div>
+
+  <div id="tooltip" class="tooltip" hidden></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
