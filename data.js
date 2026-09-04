@@ -165,13 +165,17 @@ export function buildColumnGroups(headers, groups, opts = {}) {
   return result;
 }
 
-export function searchGroups(groups, query) {
+export function searchGroups(groups, query, titles) {
   const q = norm(query);
   if (q === "") {
     return groups.map((g) => ({ ...g, total: g.columns.length, hasMatch: true }));
   }
   return groups.map((g) => {
-    const columns = g.columns.filter((c) => norm(c).includes(q));
+    const columns = g.columns.filter((c) => {
+      if (norm(c).includes(q)) return true;
+      const t = titles && titles[c];
+      return t ? norm(t).includes(q) : false;
+    });
     return { ...g, columns, total: g.columns.length, hasMatch: columns.length > 0 };
   });
 }

@@ -17,13 +17,12 @@
             <circle cx="18" cy="16" r="3" fill="none" stroke="currentColor" stroke-width="2"/>
           </svg>
           <div>
-            <h1>Matrícula Música</h1>
-            <p>SIES · Educación Superior</p>
+            <h1>Matrícula Música: Educación Superior en Chile</h1>
           </div>
         </div>
       </div>
       <div class="sidebar-section">
-        <div class="section-title" data-tip="Esta lista controla qué columnas se muestran en la tabla, agrupadas en categorías. Haz clic en una categoría para desplegarla; al pasar el mouse por encima (sin abrir) verás las columnas que contiene. Marca una columna para añadirla y desmárcala para ocultarla. Las columnas fijas (AÑO, NOMBRE CARRERA, TOTAL MATRÍCULA PRIMER AÑO, TOTAL MATRÍCULA) siempre están visibles. Cada columna visible tiene su filtro en la cabecera de la tabla: numérico (mínimo/máximo) o selección de valores con buscador. Al abrir la página todos los filtros están desactivados; la selección de columnas se recuerda entre visitas.">
+        <div class="section-title" data-tip="Personaliza las columnas de la tabla. Selecciona las que quieras ver: se ordenarán con las columnas de texto primero y las numéricas después. Las columnas fijas no se pueden ocultar (AÑO, NOMBRE CARRERA, NOMBRE INSTITUCIÓN, TOTAL MATRÍCULA PRIMER AÑO, TOTAL MATRÍCULA).">
           <span>Columnas de la tabla</span>
         </div>
         <div class="col-search">
@@ -34,39 +33,35 @@
           <input type="text" id="colSearch" placeholder="Buscar columna…" aria-label="Buscar columna">
         </div>
         <div id="colList" class="col-list" role="group" aria-label="Columnas opcionales"></div>
-        <button id="btnClearCols" class="btn-ghost sidebar-clear" type="button" data-tip="Desmarca todas las columnas opcionales, dejando visibles solo las columnas fijas (AÑO, NOMBRE CARRERA, NOMBRE INSTITUCIÓN, TOTAL MATRÍCULA PRIMER AÑO, TOTAL MATRÍCULA).">Limpiar categorías SIES</button>
+        <button id="btnClearCols" class="btn-ghost sidebar-clear" type="button" data-tip="Desmarca todas las columnas opcionales, dejando visibles solo las columnas fijas.">Restablecer columnas</button>
       </div>
     </aside>
 
     <main class="main">
-      <section class="cat-bar">
-        <div class="cat-label" data-tip="Las categorías son una clasificación propia de las carreras de música, no provienen del SIES. Activa o desactiva categorías para filtrar qué registros se muestran: la tabla, el resumen y el gráfico solo consideran las categorías activas. El filtro es inclusivo (OR): un registro aparece si pertenece a cualquiera de las categorías activas. 'Todas' activa las 11; 'Ninguna' las desactiva (0 registros).">Clasificación</div>
-        <div id="catChips" class="cat-chips" role="group" aria-label="Categorías de clasificación"></div>
-        <div class="cat-actions">
-          <button id="catAll" class="btn-ghost" type="button">Todas</button>
-          <button id="catNone" class="btn-ghost" type="button">Ninguna</button>
+      <section class="context-bar">
+        <h2>Matrícula Música: Programas de educación superior vinculados con la música en Chile (2007-2026)</h2>
+        <div class="context-intro">
+          <p>Esta página permite explorar la formación musical en la educación superior chilena entre 2007 y 2026.</p>
+          <p>Los datos de matrícula y características de las carreras provienen de la base oficial del SIES. En cambio, la selección de las carreras vinculadas con la música y su agrupación en categorías profesionales —como pedagogía en música, interpretación, composición o producción musical— corresponde a una clasificación desarrollada específicamente en el marco de esta investigación; no es una categorización oficial del SIES.</p>
+          <p>Use los filtros para consultar los datos por año, región, institución o categoría disciplinar. Puede revisar los resultados en tablas y gráficos, y descargar la información filtrada en formato CSV para análisis posteriores.</p>
         </div>
       </section>
 
-      <section class="context-bar">
-        <div>
-          <h2>Matrícula en carreras de música</h2>
-          <p id="resultCount" class="muted">Cargando datos…</p>
-        </div>
-        <div class="ctx-actions">
-          <button id="clearAll" class="btn-accent" type="button">
-            <svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Limpiar todo
-          </button>
+      <section class="cat-bar">
+        <div class="cat-label" data-tip="Categorías de clasificación: haz clic sobre una categoría para seleccionarla o deseleccionarla. Solo las categorías activas se muestran en la tabla.">Clasificación</div>
+        <div id="catChips" class="cat-chips" role="group" aria-label="Categorías de clasificación"></div>
+        <div class="cat-actions">
+          <button id="catAll" class="btn-ghost" type="button" data-tip="Selecciona todas las categorías.">Todas</button>
+          <button id="catNone" class="btn-ghost" type="button" data-tip="Deselecciona todas las categorías.">Ninguna</button>
         </div>
       </section>
 
       <section id="resumen" class="cards" aria-label="Resumen">
-        <div class="card" id="card-registros" data-tip="Número de registros (filas de la base) que cumplen los filtros actuales. Cada registro es una carrera impartida por una institución en una sede, en un año concreto."><span class="card-label">Registros</span><span class="card-value">—</span></div>
-        <div class="card" id="card-carreras" data-tip="Número de códigos de carrera distintos presentes en los registros filtrados. Cada código identifica una carrera; dos carreras con el mismo nombre pueden ser carreras distintas."><span class="card-label">Carreras únicas</span><span class="card-value">—</span></div>
-        <div class="card" id="card-instituciones" data-tip="Número de instituciones de educación superior distintas presentes en los registros filtrados."><span class="card-label">Instituciones</span><span class="card-value">—</span></div>
-        <div class="card" id="card-matricula" data-tip="Suma de la columna TOTAL MATRÍCULA sobre los registros filtrados."><span class="card-label">Matrícula total</span><span class="card-value">—</span></div>
-        <div class="card" id="card-anos" data-tip="Rango de años (mínimo a máximo) que abarcan los registros filtrados."><span class="card-label">Años</span><span class="card-value">—</span></div>
+        <div class="card" id="card-registros" data-tip="Número de registros que cumplen los filtros actuales."><span class="card-label">Registros</span><span class="card-value">—</span></div>
+        <div class="card" id="card-carreras" data-tip="Códigos de carrera distintos. Cada código es único: un programa cambia de código si modifica su malla, y el mismo programa en sedes diferentes tiene códigos distintos."><span class="card-label">Carreras únicas</span><span class="card-value">—</span></div>
+        <div class="card" id="card-instituciones" data-tip="Número de instituciones de educación superior presentes en los registros filtrados."><span class="card-label">Instituciones</span><span class="card-value">—</span></div>
+        <div class="card" id="card-matricula" data-tip="Matrícula acumulada de todos los registros filtrados."><span class="card-label">Matrícula total</span><span class="card-value">—</span></div>
+        <div class="card" id="card-anos" data-tip="Rango temporal que abarcan los registros filtrados."><span class="card-label">Años</span><span class="card-value">—</span></div>
       </section>
 
       <section class="table-card">

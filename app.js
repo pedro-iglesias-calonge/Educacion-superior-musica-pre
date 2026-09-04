@@ -42,6 +42,9 @@ const SERIES = [
 const METRIC_COLS = SERIES.map((s) => s.col);
 const SERIES_BY_COL = Object.fromEntries(SERIES.map((s) => [s.col, s]));
 
+const PNG_BG = "rgba(33, 33, 33, 0.85)";
+const FONT_STACK = "Poppins, Arial, sans-serif";
+
 const W = 1000;
 const H = 420;
 const mL = 70;
@@ -52,6 +55,11 @@ const plotW = W - mL - mR;
 const plotH = H - mT - mB;
 
 const $ = (sel) => document.querySelector(sel);
+
+function cssVar(name, fallback) {
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return v || fallback;
+}
 
 let headers = [];
 let rows = [];
@@ -90,13 +98,13 @@ async function loadData() {
 
 function buildColumnTitles() {
   const titleMap = {
-    ANO: "Año de matrícula (código MAT_AÑO)",
+    ANO: "Año de matrícula",
     "TOTAL MATRICULA": "Total de estudiantes matriculados en la carrera",
     "TOTAL MATRICULA PRIMER ANO": "Total de estudiantes matriculados en primer año",
     "NOMBRE CARRERA": "Nombre de la carrera",
-    "CLASIFICACION INSTITUCION NIVEL 1": "Tipo general de institución (ej. Universidades)",
-    "CLASIFICACION INSTITUCION NIVEL 2": "Subtipo de institución",
-    "CLASIFICACION INSTITUCION NIVEL 3": "Detalle de institución",
+    "CLASIFICACION INSTITUCION NIVEL 1": "Clasificación según categoría más amplia de instituciones: Centros de Formación Técnica; Institutos Profesionales; Universidades",
+    "CLASIFICACION INSTITUCION NIVEL 2": "Clasificación según categoría de Institución que distingue Universidades del Consejo de Rectores (CRUCH) y Universidades Privadas que no son del CRUCH: Centros de Formación Técnica; Institutos Profesionales; Universidades Estatales CRUCH; Universidades Privadas CRUCH; Universidades Privadas; Universidades (*carreras convenio)",
+    "CLASIFICACION INSTITUCION NIVEL 3": "Clasificación de la Institución que distingue categoría más amplia de instituciones y diferencia Universidades en Privada o Estatal: Centros de Formación Técnica; Institutos Profesionales; Universidades Estatales CRUCH; Universidades Privadas CRUCH; Universidades Privadas; Universidades (*carreras convenio)",
     "CODIGO DE INSTITUCION": "Código numérico de la institución",
     "NOMBRE INSTITUCION": "Nombre de la institución de educación superior",
     ACREDITACION_INSTITUCIONAL: "Estado de acreditación de la institución",
@@ -104,40 +112,40 @@ function buildColumnTitles() {
     PROVINCIA: "Provincia de la sede",
     COMUNA: "Comuna de la sede",
     "NOMBRE SEDE": "Nombre de la sede donde se imparte la carrera",
-    "AREA DEL CONOCIMIENTO": "Área general del conocimiento (CINE)",
-    "CINE-F 1997 AREA": "Área CINE 1997",
-    "CINE-F 1997 SUBAREA": "Subárea CINE 1997",
-    "AREA CARRERA GENERICA": "Área genérica de la carrera",
-    "CINE-F 2013 AREA": "Área CINE 2013",
-    "CINE-F 2013 SUBAREA": "Subárea CINE 2013",
-    "NIVEL GLOBAL": "Nivel de la formación (pregrado, postgrado, etc.)",
-    "CARRERA CLASIFICACION NIVEL 1": "Clasificación de la carrera, nivel 1",
-    "CARRERA CLASIFICACION NIVEL 2": "Clasificación de la carrera, nivel 2",
-    MODALIDAD: "Modalidad de estudio (presencial, distancia, etc.)",
-    JORNADA: "Jornada (diurna, vespertina, etc.)",
-    "TIPO DE PLAN DE LA CARRERA": "Tipo de plan de estudios",
-    "DURACION ESTUDIO CARRERA": "Duración nominal de los estudios",
-    "DURACION TOTAL DE CARRERA": "Duración total de la carrera",
-    "CODIGO CARRERA": "Código identificador de la carrera",
-    ACREDITACION_CARRERA: "Estado de acreditación de la carrera",
+    "AREA DEL CONOCIMIENTO": "Categorización histórica del MINEDUC basada en la clasificación de CINE-UNESCO de 1997: Administración y Comercio; Agropecuaria; Arte y Arquitectura; Ciencias Básicas; Ciencias Sociales; Derecho; Educación; Humanidades; Salud; Tecnología; Sin área definida",
+    "CINE-F 1997 AREA": "Corresponde al nombre del Grupo Amplio establecido por UNESCO en la clasificación CINE-F de 1997, siendo utilizado por la OCDE hasta el 2016: Educación; Artes y Humanidades; Ciencias Sociales, Periodismo e Información; Administración de Empresas y Derecho; Ciencias naturales, matemáticas y estadística; Tecnología de la Información y la Comunicación (TIC); Ingeniería, Industria y Construcción; Agricultura, Silvicultura, Pesca y Veterinaria; Salud y Bienestar; Servicios",
+    "CINE-F 1997 SUBAREA": "Corresponde a la categorización de subárea establecido por UNESCO en la clasificación CINE-F definido el año 2013 y siendo usado por la OCDE desde el año 2016:  Educación; Artes y Humanidades sin mayor definición; Artes; Humanidades; Idiomas; Ciencias Sociales, periodismo e información sin mayores definiciones; Ciencias Sociales y del Comportamiento; Periodismo e Información; Educación Comercial y Administración; Derecho; Ciencias Naturales, Matemáticas y Estadísticas sin mayor definición; Ciencias Biológicas y Afines; Medio Ambiente; Ciencias Físicas; Matemáticas y Estadísticas; Tecnología de la Información y la Comunicación (TIC); Ingeniería y Profesiones Afines; Industria y Producción; Arquitectura y Construcción; Agricultura, Silvicultura, Pesca y Veterinaria sin mayor definición; Agricultura; Silvicultura; Pesca; Veterinaria; Salud; Bienestar; Servicios personales; Servicios de Higiene y Salud Ocupacional; Servicios de Seguridad; Servicios de Transporte",
+    "AREA CARRERA GENERICA": "Categorización que estandariza, solo para fines analíticos, los nombres de las carreras, realizada por parte de SIES",
+    "CINE-F 2013 AREA": "Corresponde al código de categorización de subárea establecido por UNESCO en la clasificación CINE-F definido el año 2013 y siendo usado por la OCDE desde el año 2016: Educación; Artes y Humanidades; Ciencias Sociales, Periodismo e Información; Administración de Empresas y Derecho; Ciencias naturales, matemáticas y estadística; Tecnología de la Información y la Comunicación (TIC); Ingeniería, Industria y Construcción; Agricultura, Silvicultura, Pesca y Veterinaria; Salud y Bienestar; Servicios",
+    "CINE-F 2013 SUBAREA": "Corresponde a la categorización de subárea establecido por UNESCO en la clasificación CINE-F definido el año 2013 y siendo usado por la OCDE desde el año 2016: Educación; Artes y Humanidades sin mayor definición; Artes; Humanidades; Idiomas; Ciencias Sociales, periodismo e información sin mayores definiciones; Ciencias Sociales y del Comportamiento; Periodismo e Información; Educación Comercial y Administración; Derecho; Ciencias Naturales, Matemáticas y Estadísticas sin mayor definición; Ciencias Biológicas y Afines; Medio Ambiente; Ciencias Físicas; Matemáticas y Estadísticas; Tecnología de la Información y la Comunicación (TIC); Ingeniería y Profesiones Afines; Industria y Producción; Arquitectura y Construcción; Agricultura, Silvicultura, Pesca y Veterinaria sin mayor definición; Agricultura; Silvicultura; Pesca; Veterinaria; Salud; Bienestar; Servicios personales; Servicios de Higiene y Salud Ocupacional; Servicios de Seguridad; Servicios de Transporte",
+    "NIVEL GLOBAL": "Clasificación del nivel global a la que pertenece la carrera o programa: Pregrado; Postgrado; Postítulo",
+    "CARRERA CLASIFICACION NIVEL 1": "Clasificación del nivel específico a la que pertenece la carrera o programa: Bachillerato, Ciclo Inicial o Plan Común; Técnico de Nivel Superior; Profesional Sin Licenciatura; Licenciatura No Conducente a Título; Profesional Con Licenciatura; Diplomado (superior a un semestre); Postítulo; Especialidad Médica U Odontológica; Magister; Doctorado",
+    "CARRERA CLASIFICACION NIVEL 2": "Clasificación general de la carrera o programa: Carreras Técnicas; Carreras Profesionales; Postítulo; Magister; Doctorado",
+    MODALIDAD: "Modalidad en que se imparte la carrera o programa: Presencial; Semipresencial; No presencial",
+    JORNADA: "Jornada en que se imparte la carrera o programa: Diurno; Vespertino; Semipresencial; A Distancia; Otro",
+    "TIPO DE PLAN DE LA CARRERA": "Tipo de plan de estudios: Plan regular; Plan regular de continuidad; Plan especial",
+    "DURACION ESTUDIO CARRERA": "Duración de la carrera en semestres, informada por la institución según lo establecido en su plan regular de estudios. Lo anterior, no incluye el proceso de titulación si éste es adicional al plan de estudios.",
+    "DURACION TOTAL DE CARRERA": "Duración teórica total en semestres de la carrera o programa, informada por la institución desde el momento en que un estudiante ingresa a primer año hasta que obtiene el título o grado terminal",
+    "CODIGO CARRERA": "Código único identificador de la carrera",
+    ACREDITACION_CARRERA: "La Acreditación de la carrera, es aquella que es informada por la institución en el proceso de oferta académica realizado en diciembre del año anterior. La información más actualizada de la acreditación de carreras puede encontrarse en www.cnachile.cl",
     "TOTAL RANGO DE EDAD": "Suma de todos los rangos de edad",
-    "RANGO DE EDAD 15 A 19 ANOS": "Matriculados de 15 a 19 años",
-    "RANGO DE EDAD 20 A 24 ANOS": "Matriculados de 20 a 24 años",
-    "RANGO DE EDAD 25 A 29 ANOS": "Matriculados de 25 a 29 años",
-    "RANGO DE EDAD 30 A 34 ANOS": "Matriculados de 30 a 34 años",
-    "RANGO DE EDAD 35 A 39 ANOS": "Matriculados de 35 a 39 años",
-    "RANGO DE EDAD 40 Y MAS ANOS": "Matriculados de 40 años o más",
+    "RANGO DE EDAD 15 A 19 ANOS": "Cantidad total de matriculados en el rango respectivo: Matriculados de 15 a 19 años",
+    "RANGO DE EDAD 20 A 24 ANOS": "Cantidad total de matriculados en el rango respectivo: Matriculados de 20 a 24 años",
+    "RANGO DE EDAD 25 A 29 ANOS": "Cantidad total de matriculados en el rango respectivo: Matriculados de 25 a 29 años",
+    "RANGO DE EDAD 30 A 34 ANOS": "Cantidad total de matriculados en el rango respectivo: Matriculados de 30 a 34 años",
+    "RANGO DE EDAD 35 A 39 ANOS": "Cantidad total de matriculados en el rango respectivo: Matriculados de 35 a 39 años",
+    "RANGO DE EDAD 40 Y MAS ANOS": "Cantidad total de matriculados en el rango respectivo: Matriculados de 40 años o más",
     "RANGO DE EDAD SIN INFORMACION": "Matriculados cuya edad no está informada",
     "PROMEDIO EDAD CARRERA": "Edad promedio de los matriculados",
     "PROMEDIO EDAD MUJER": "Edad promedio de las mujeres",
     "PROMEDIO EDAD HOMBRE": "Edad promedio de los hombres",
     "PROMEDIO EDAD NO BINARIO": "Edad promedio de personas no binarias",
-    "TES MUNICIPAL + SERVICIO LOCAL EDUCACION": "Tipo de establecimiento secundario",
-    "TES PARTICULAR SUBVENCIONADO": "Tipo de establecimiento secundario",
-    "TES PARTICULAR PAGADO": "Tipo de establecimiento secundario",
-    "TES CORP. DE ADMINISTRACION DELEGADA": "Tipo de establecimiento secundario",
-    "TOTAL TES": "Tipo de establecimiento secundario",
-    "% COBERTURA TES": "Tipo de establecimiento secundario",
+    "TES MUNICIPAL + SERVICIO LOCAL EDUCACION": "Tipo de establecimiento secundario: Cantidad de estudiantes provenientes de establecimientos categorizados como Corporación Municipal",
+    "TES PARTICULAR SUBVENCIONADO": "Tipo de establecimiento secundario: Cantidad de estudiantes provenientes de establecimientos categorizados como Particular Subvencionado",
+    "TES PARTICULAR PAGADO": "Tipo de establecimiento secundario: Cantidad de estudiantes provenientes de establecimientos categorizados como Particular Pagado",
+    "TES CORP. DE ADMINISTRACION DELEGADA": "Tipo de establecimiento secundario: Cantidad de estudiantes provenientes de establecimientos categorizados como Corporación de Administración Delegada",
+    "TOTAL TES": "Tipo de establecimiento secundario: Cantidad total de estudiantes que fueron identificados como provenientes de establecimientos secundarios en el período 2002-2021 (egresados de enseñanza media)",
+    "% COBERTURA TES": "% de estudiantes que fueron identificados en la base de establecimientos secundarios (TOTAL TES/TOTAL MATRICULADOS POR CARRERA)",
     "TIPO ESTABLECIMIENTO HC": "Egresados de establecimientos humanístico-científicos",
     "TIPO ESTABLECIMIENTO TP": "Egresados de establecimientos técnico-profesionales",
     "CLAS_EST ADULTO": "Egresados de educación de adultos",
@@ -187,7 +195,7 @@ function buildColList() {
   list.innerHTML = "";
   const searchValue = $("#colSearch").value;
   const searching = searchValue.trim() !== "";
-  const groups = searching ? searchGroups(sidebarGroups, searchValue) : sidebarGroups;
+  const groups = searching ? searchGroups(sidebarGroups, searchValue, columnTitles) : sidebarGroups;
   for (const g of groups) {
     if (searching && !g.hasMatch) continue;
     const tipText = g.columns.join("\n");
@@ -210,7 +218,10 @@ function buildColList() {
     caret.setAttribute("aria-hidden", "true");
     caret.textContent = "▸";
     summary.appendChild(caret);
-    if (!details.open) summary.dataset.tip = tipText;
+    if (!details.open) {
+      summary.dataset.tip = tipText;
+      summary.dataset.tipTitle = g.name;
+    }
     details.appendChild(summary);
 
     const items = document.createElement("div");
@@ -221,9 +232,11 @@ function buildColList() {
     details.addEventListener("toggle", () => {
       if (details.open) {
         delete summary.dataset.tip;
+        delete summary.dataset.tipTitle;
         hideTooltip();
       } else {
         summary.dataset.tip = tipText;
+        summary.dataset.tipTitle = g.name;
       }
     });
     list.appendChild(details);
@@ -709,7 +722,6 @@ function renderResumen(filtered) {
   $("#card-anos .card-value").textContent = years.length
     ? `${minY} – ${maxY}`
     : "—";
-  $("#resultCount").textContent = `${filtered.length.toLocaleString("es-CL")} registros visibles`;
 }
 
 /* ---------- Chart ---------- */
@@ -739,6 +751,7 @@ function renderChart() {
 
   const { yMax, n, xAt, yAt, ticks } = chartScale(data);
   const ns = "http://www.w3.org/2000/svg";
+  const gridColor = cssVar("--grid", "rgba(255,255,255,0.14)");
 
   for (const t of ticks) {
     const line = document.createElementNS(ns, "line");
@@ -746,7 +759,7 @@ function renderChart() {
     line.setAttribute("y1", t.y);
     line.setAttribute("x2", W - mR);
     line.setAttribute("y2", t.y);
-    line.setAttribute("stroke", "var(--border)");
+    line.setAttribute("stroke", gridColor);
     line.setAttribute("stroke-dasharray", "4 4");
     svg.appendChild(line);
 
@@ -832,23 +845,40 @@ function chartScale(data) {
 }
 
 function buildChartSvg(data) {
-  const { xAt, yAt, ticks } = chartScale(data);
+  const pT = 46;
+  const pB = 64;
+  const pW = W - mL - mR;
+  const pH = H - pT - pB;
+  const maxVal = Math.max(...data.map((d) => Math.max(...METRIC_COLS.map((m) => d[m]))));
+  const yMax = niceMax(maxVal);
+  const n = data.length;
+  const xAt = (i) => (n > 1 ? mL + (i / (n - 1)) * pW : mL + pW / 2);
+  const yAt = (v) => pT + pH - (v / yMax) * pH;
+  const ticks = [];
+  for (let g = 0; g <= 5; g++) {
+    ticks.push({ y: pT + (pH / 5) * g, val: yMax - (yMax / 5) * g });
+  }
+
+  const css = cssVar;
+  const gridColor = css("--grid", "rgba(255,255,255,0.14)");
+  const muted = css("--muted", "#898989");
+  const text = css("--text", "#d3d3d3");
 
   const parts = [];
   parts.push(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="Poppins, Arial, sans-serif">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="${FONT_STACK}">`,
   );
-  parts.push(`<rect width="${W}" height="${H}" fill="#ffffff"/>`);
+  parts.push(`<rect width="${W}" height="${H}" fill="${PNG_BG}"/>`);
   parts.push(
-    `<text x="${W / 2}" y="20" text-anchor="middle" font-size="20" font-weight="700" fill="#333333">Matrícula por año</text>`,
+    `<text x="${W / 2}" y="28" text-anchor="middle" font-size="20" font-weight="700" fill="${text}">Matrícula por año</text>`,
   );
 
   for (const t of ticks) {
     parts.push(
-      `<line x1="${mL}" y1="${t.y}" x2="${W - mR}" y2="${t.y}" stroke="#dddddd" stroke-dasharray="4 4"/>`,
+      `<line x1="${mL}" y1="${t.y}" x2="${W - mR}" y2="${t.y}" stroke="${gridColor}" stroke-dasharray="4 4"/>`,
     );
     parts.push(
-      `<text x="${mL - 8}" y="${t.y + 4}" text-anchor="end" font-size="12" fill="#666666">${Math.round(t.val).toLocaleString("es-CL")}</text>`,
+      `<text x="${mL - 8}" y="${t.y + 4}" text-anchor="end" font-size="11" fill="${muted}">${Math.round(t.val).toLocaleString("es-CL")}</text>`,
     );
   }
 
@@ -859,30 +889,31 @@ function buildChartSvg(data) {
         `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>`,
       );
     }
+    for (let i = 0; i < data.length; i++) {
+      if (data[i][s.col] > 0) {
+        parts.push(`<circle cx="${xAt(i)}" cy="${yAt(data[i][s.col])}" r="4" fill="${s.color}"/>`);
+      }
+    }
   }
 
   data.forEach((d, i) => {
     const cx = xAt(i);
     parts.push(
-      `<text x="${cx}" y="${H - mB + 22}" text-anchor="middle" font-size="12" fill="#666666">${d.year}</text>`,
+      `<text x="${cx}" y="${H - pB + 22}" text-anchor="middle" font-size="11" fill="${muted}">${d.year}</text>`,
     );
   });
 
-  parts.push(
-    `<line x1="${mL}" y1="${mT}" x2="${mL}" y2="${H - mB}" stroke="#cccccc" stroke-width="1"/>`,
-  );
-  parts.push(
-    `<line x1="${mL}" y1="${H - mB}" x2="${W - mR}" y2="${H - mB}" stroke="#cccccc" stroke-width="1"/>`,
-  );
-
-  const ly = H - mB + 40;
-  let lx = mL;
+  const gap = 30;
+  const itemW = (s) => 20 + s.label.length * 8;
+  const totalW = SERIES.reduce((a, s) => a + itemW(s), 0) + gap * (SERIES.length - 1);
+  let lx = (W - totalW) / 2;
+  const ly = H - pB + 52;
   for (const s of SERIES) {
     parts.push(`<rect x="${lx}" y="${ly - 9}" width="14" height="14" rx="3" fill="${s.color}"/>`);
     parts.push(
-      `<text x="${lx + 20}" y="${ly}" font-size="13" fill="#333333">${s.label}</text>`,
+      `<text x="${lx + 20}" y="${ly}" font-size="13" fill="${muted}">${s.label}</text>`,
     );
-    lx += 20 + (s.label.length * 8) + 26;
+    lx += itemW(s) + gap;
   }
 
   parts.push(`</svg>`);
@@ -994,10 +1025,23 @@ document.addEventListener("mouseover", (e) => {
     hideTooltip();
     return;
   }
-  tip.textContent = el.dataset.tip;
+  tip.innerHTML = "";
+  tip.classList.remove("tip-group", "tip-column");
+  if (el.classList.contains("col-group-head")) {
+    tip.classList.add("tip-group");
+    const title = document.createElement("div");
+    title.className = "tt-title";
+    title.textContent = (el.dataset.tipTitle || "") + ":";
+    tip.appendChild(title);
+    const body = document.createElement("div");
+    body.className = "tt-cols";
+    body.textContent = el.dataset.tip;
+    tip.appendChild(body);
+  } else {
+    tip.classList.add("tip-column");
+    tip.textContent = el.dataset.tip;
+  }
   tip.hidden = false;
-  if (el.classList.contains("col-group-head")) tip.classList.add("tip-group");
-  else tip.classList.add("tip-column");
   positionTip(e);
 });
 
@@ -1015,16 +1059,6 @@ function positionTip(e) {
   tip.style.left = x + "px";
   tip.style.top = y + "px";
 }
-
-/* ---------- Clear all ---------- */
-function clearFilters() {
-  colFilters = {};
-  selectedCats = new Set(catValues);
-  buildCatChips();
-  renderAll();
-}
-
-$("#clearAll").addEventListener("click", clearFilters);
 
 /* ---------- Descargas ---------- */
 function downloadBlob(content, type, filename) {
@@ -1097,5 +1131,4 @@ function escapeHtml(s) {
 
 loadData().catch((err) => {
   console.error(err);
-  $("#resultCount").textContent = "Error al cargar los datos";
 });
